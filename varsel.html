@@ -1743,9 +1743,9 @@
     }
 
     function handleSync401Error() {
-        console.warn("Access token expired or unauthorized. Refreshing identity session.");
+        console.warn("Access token expired or unauthorized. Resetting identity session.");
         setSyncStatus('offline');
-        // Force GIS authentication flow to re-grant permissions seamlessly
+        driveState.accessToken = null;
         if (typeof startGoogleSignIn === 'function') {
             startGoogleSignIn();
         }
@@ -1764,15 +1764,22 @@
             drivePushData();
         }
     }
+    // ═══════════════════════════════════════════════════════════
+    // BACKGROUND AUTO-SYNC RUNNER (Every 30 Seconds)
+    // ═══════════════════════════════════════════════════════════
+    setInterval(async () => {
+        if (!driveState.skipSync && driveState.accessToken && driveState.online) {
+            console.log("🔄 Running scheduled 30-second background sync...");
+            await driveLoadData();
+        }
+    }, 30000);
 
     // ═══════════════════════════════════════════════════════════
     // INIT
     // ═══════════════════════════════════════════════════════════
     hydrate();
     renderApp();
-    // Show sign-in screen or auto-resume session
     window.addEventListener('load', () => {
-        // Small delay to let GIS script load
         initSignInScreen();
     });
 </script>
