@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VarSel</title>
+    <title>VarSel — Family Expenses</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -473,16 +474,119 @@
 
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* ── SYNC STATUS ── */
+        .sync-status {
+            padding: 8px 12px; border-top: 1px solid var(--border);
+            display: flex; align-items: center; gap: 7px;
+            font-size: 0.7rem; color: var(--muted);
+        }
+        .sync-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            flex-shrink: 0; transition: background 0.3s;
+        }
+        .sync-dot.synced  { background: #5aaa82; }
+        .sync-dot.syncing { background: var(--accent); animation: pulse 1s infinite; }
+        .sync-dot.offline { background: #e07a5a; }
+        .sync-dot.local   { background: var(--muted); }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        .sync-user {
+            font-size: 0.65rem; color: var(--muted);
+            padding: 6px 12px; border-top: 1px solid var(--border);
+            display: flex; align-items: center; gap: 7px;
+            overflow: hidden;
+        }
+        .sync-user-avatar {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: var(--surf3); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; color: var(--accent); font-weight: 600;
+        }
+        .sync-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .sync-signout {
+            background: none; border: none; color: var(--muted);
+            font-size: 0.65rem; cursor: pointer; padding: 2px 4px;
+            border-radius: 3px; transition: color 0.15s; flex-shrink: 0;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .sync-signout:hover { color: #e07a5a; }
+
+        /* ── SIGN-IN SCREEN ── */
+        .signin-screen {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 200;
+        }
+        .signin-card {
+            background: var(--surf); border: 1px solid var(--border);
+            border-radius: 16px; padding: 48px 52px;
+            text-align: center; max-width: 400px; width: 90%;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+        }
+        .signin-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.4rem; font-weight: 700;
+            color: var(--accent); margin-bottom: 6px;
+        }
+        .signin-sub {
+            font-size: 0.72rem; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.1em;
+            margin-bottom: 36px;
+        }
+        .signin-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 32px; }
+        .signin-btn {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; padding: 12px 20px;
+            background: var(--surf2); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text);
+            font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+            font-weight: 500; cursor: pointer; transition: all 0.18s; margin-bottom: 12px;
+        }
+        .signin-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .signin-skip {
+            background: none; border: none; color: var(--muted);
+            font-size: 0.75rem; cursor: pointer; font-family: 'DM Sans', sans-serif;
+            padding: 6px; transition: color 0.15s; text-decoration: underline;
+        }
+        .signin-skip:hover { color: var(--text); }
+        .signin-note {
+            font-size: 0.68rem; color: var(--muted); margin-top: 24px;
+            line-height: 1.6; padding-top: 20px; border-top: 1px solid var(--border);
+        }
     </style>
 </head>
 <body>
+<!-- ── SIGN-IN SCREEN ── -->
+<div class="signin-screen" id="signin-screen">
+    <div class="signin-card">
+        <div class="signin-logo">VarSel</div>
+        <div class="signin-sub">Family Expenses</div>
+        <div class="signin-desc">
+            Sign in with your Google account to sync expenses with the family in real time. Your data is stored in your shared Google Drive folder.
+        </div>
+        <button class="signin-btn" onclick="startGoogleSignIn()">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Sign in with Google
+        </button>
+        <button class="signin-skip" onclick="skipSignIn()">Continue without sync (local only)</button>
+        <div class="signin-note">
+            VarSel only accesses the shared VarSel Data folder in your Drive. No other files are read or modified.
+        </div>
+    </div>
+</div>
+
 <div class="app">
 
     <!-- ── SIDEBAR ── -->
     <aside class="sidebar">
         <div class="sidebar-logo">
             <h1>VarSel</h1>
-            <p>Varavu Selavu</p>
+            <p>Family Expenses</p>
         </div>
 
         <nav class="sidebar-nav">
@@ -517,6 +621,15 @@
             <button class="btn-sm" onclick="exportData()">⬇ Export</button>
             <button class="btn-sm" onclick="triggerImport()">⬆ Import</button>
             <input type="file" id="import-input" accept=".json" style="display:none" onchange="handleImport(event)">
+        </div>
+        <div class="sync-status" id="sync-status">
+            <span class="sync-dot local" id="sync-dot"></span>
+            <span id="sync-label">Local only</span>
+        </div>
+        <div class="sync-user" id="sync-user" style="display:none">
+            <div class="sync-user-avatar" id="sync-avatar">?</div>
+            <span class="sync-user-name" id="sync-name"></span>
+            <button class="sync-signout" onclick="signOut()" title="Sign out">↩</button>
         </div>
     </aside>
 
@@ -608,7 +721,7 @@
     // ═══════════════════════════════════════════════════════════
     // PERSISTENCE
     // ═══════════════════════════════════════════════════════════
-    function persist() {
+    function _persistLocal() {
         localStorage.setItem('varsel_v1', JSON.stringify({
             expenses: state.expenses,
             members: state.members,
@@ -1499,10 +1612,353 @@
     }
 
     // ═══════════════════════════════════════════════════════════
+    // GOOGLE DRIVE SYNC
+    // ═══════════════════════════════════════════════════════════
+    const GDRIVE = {
+        CLIENT_ID:   '981670144857-ahgvgas7tfmc3q8tqm99e5vagu65amt9.apps.googleusercontent.com',
+        FOLDER_ID:   '1e0GjnUaTVv9ZRAQeiS-BquYOK_GQJnsq',
+        SCOPES:      'https://www.googleapis.com/auth/drive.file',
+        FILENAME:    'varsel-data.json',
+        POLL_MS:     30000,  // poll every 30 seconds
+    };
+
+    let driveState = {
+        accessToken: null,
+        fileId:      null,
+        userEmail:   '',
+        userName:    '',
+        polling:     null,
+        pendingSync: false,
+        online:      navigator.onLine,
+        skipSync:    false,
+    };
+
+    // ─── Online / offline detection ───────────────────────────
+    window.addEventListener('online',  () => { driveState.online = true;  setSyncStatus('syncing'); syncNow(); });
+    window.addEventListener('offline', () => { driveState.online = false; setSyncStatus('offline'); });
+
+    // ─── Sign-in screen logic ─────────────────────────────────
+    function initSignInScreen() {
+        // If already authed in this session (token in sessionStorage), skip screen
+        const saved = sessionStorage.getItem('varsel_token');
+        if (saved) {
+            driveState.accessToken = saved;
+            const email = sessionStorage.getItem('varsel_email') || '';
+            const name  = sessionStorage.getItem('varsel_name')  || '';
+            onSignedIn(driveState.accessToken, email, name);
+            return;
+        }
+        // If user previously chose local-only, skip screen
+        if (localStorage.getItem('varsel_skip_sync') === '1') {
+            skipSignIn();
+            return;
+        }
+        // Show sign-in screen
+        document.getElementById('signin-screen').style.display = 'flex';
+    }
+
+    function startGoogleSignIn() {
+        // Use Google Identity Services token flow
+        const client = google.accounts.oauth2.initTokenClient({
+            client_id: GDRIVE.CLIENT_ID,
+            scope: GDRIVE.SCOPES,
+            callback: (response) => {
+                if (response.error) { alert('Sign-in failed: ' + response.error); return; }
+                driveState.accessToken = response.access_token;
+                sessionStorage.setItem('varsel_token', response.access_token);
+                // Fetch user info
+                fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: 'Bearer ' + response.access_token }
+                }).then(r => r.json()).then(info => {
+                    const email = info.email || '';
+                    const name  = info.name  || email.split('@')[0];
+                    sessionStorage.setItem('varsel_email', email);
+                    sessionStorage.setItem('varsel_name',  name);
+                    onSignedIn(response.access_token, email, name);
+                }).catch(() => onSignedIn(response.access_token, '', ''));
+            },
+        });
+        client.requestAccessToken();
+    }
+
+    function onSignedIn(token, email, name) {
+        driveState.accessToken = token;
+        driveState.userEmail   = email;
+        driveState.userName    = name || email;
+        driveState.skipSync    = false;
+        localStorage.removeItem('varsel_skip_sync');
+
+        // Hide sign-in screen
+        document.getElementById('signin-screen').style.display = 'none';
+
+        // Show user in sidebar
+        const initials = (name || email || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        document.getElementById('sync-avatar').textContent = initials;
+        document.getElementById('sync-name').textContent   = name || email;
+        document.getElementById('sync-user').style.display = 'flex';
+
+        setSyncStatus('syncing');
+        // Initial load from Drive
+        driveLoadData().then(() => {
+            startPolling();
+        });
+    }
+
+    function skipSignIn() {
+        driveState.skipSync = true;
+        localStorage.setItem('varsel_skip_sync', '1');
+        document.getElementById('signin-screen').style.display = 'none';
+        document.getElementById('sync-user').style.display = 'none';
+        setSyncStatus('local');
+        hydrate();
+        renderApp();
+    }
+
+    function signOut() {
+        if (!confirm('Sign out? You can sign back in any time. Local data is preserved.')) return;
+        driveState.accessToken = null;
+        driveState.fileId      = null;
+        driveState.userEmail   = '';
+        driveState.userName    = '';
+        sessionStorage.removeItem('varsel_token');
+        sessionStorage.removeItem('varsel_email');
+        sessionStorage.removeItem('varsel_name');
+        localStorage.removeItem('varsel_skip_sync');
+        stopPolling();
+        document.getElementById('sync-user').style.display = 'none';
+        setSyncStatus('local');
+        document.getElementById('signin-screen').style.display = 'flex';
+    }
+
+    // ─── Sync status indicator ────────────────────────────────
+    function setSyncStatus(status, detail) {
+        const dot   = document.getElementById('sync-dot');
+        const label = document.getElementById('sync-label');
+        dot.className = 'sync-dot ' + status;
+        const labels = {
+            synced:  'Synced ✓',
+            syncing: 'Syncing…',
+            offline: 'Offline',
+            local:   'Local only',
+            error:   'Sync error',
+        };
+        label.textContent = detail || labels[status] || status;
+    }
+
+    // ─── Polling ──────────────────────────────────────────────
+    function startPolling() {
+        stopPolling();
+        driveState.polling = setInterval(() => {
+            if (driveState.online && driveState.accessToken) driveLoadData();
+        }, GDRIVE.POLL_MS);
+    }
+    function stopPolling() {
+        if (driveState.polling) { clearInterval(driveState.polling); driveState.polling = null; }
+    }
+
+    // ─── Drive API helpers ────────────────────────────────────
+    async function driveRequest(url, options = {}) {
+        if (!driveState.accessToken) throw new Error('Not authenticated');
+        const res = await fetch(url, {
+            ...options,
+            headers: {
+                'Authorization': 'Bearer ' + driveState.accessToken,
+                ...(options.headers || {}),
+            },
+        });
+        if (res.status === 401) {
+            // Token expired — show sign-in again
+            driveState.accessToken = null;
+            sessionStorage.removeItem('varsel_token');
+            setSyncStatus('error', 'Session expired');
+            document.getElementById('signin-screen').style.display = 'flex';
+            throw new Error('Token expired');
+        }
+        return res;
+    }
+
+    async function driveFindFile() {
+        const q = encodeURIComponent(`name='${GDRIVE.FILENAME}' and '${GDRIVE.FOLDER_ID}' in parents and trashed=false`);
+        const res = await driveRequest(
+            `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&spaces=drive`
+        );
+        const data = await res.json();
+        return data.files && data.files.length > 0 ? data.files[0] : null;
+    }
+
+    async function driveReadFile(fileId) {
+        const res = await driveRequest(
+            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
+        );
+        return await res.json();
+    }
+
+    async function driveWriteFile(content) {
+        const blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' });
+
+        if (driveState.fileId) {
+            // Update existing file
+            await driveRequest(
+                `https://www.googleapis.com/upload/drive/v3/files/${driveState.fileId}?uploadType=media`,
+                { method: 'PATCH', body: blob, headers: { 'Content-Type': 'application/json' } }
+            );
+        } else {
+            // Create new file in folder
+            const meta = { name: GDRIVE.FILENAME, parents: [GDRIVE.FOLDER_ID] };
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+            form.append('file', blob);
+            const res = await driveRequest(
+                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+                { method: 'POST', body: form }
+            );
+            const data = await res.json();
+            driveState.fileId = data.id;
+            sessionStorage.setItem('varsel_fileid', data.id);
+        }
+    }
+
+    // ─── Load from Drive (merge into local state) ─────────────
+    async function driveLoadData() {
+        if (driveState.skipSync || !driveState.accessToken || !driveState.online) return;
+        setSyncStatus('syncing');
+        try {
+            // Restore cached fileId from session
+            if (!driveState.fileId) {
+                driveState.fileId = sessionStorage.getItem('varsel_fileid') || null;
+            }
+
+            const file = await driveFindFile();
+            if (!file) {
+                // No file yet — push local state to Drive as initial file
+                await drivePushData();
+                setSyncStatus('synced');
+                return;
+            }
+            driveState.fileId = file.id;
+            sessionStorage.setItem('varsel_fileid', file.id);
+
+            const remote = await driveReadFile(file.id);
+            mergeRemoteData(remote);
+            persist();
+            renderApp();
+            setSyncStatus('synced');
+        } catch(err) {
+            console.error('Drive load error:', err);
+            if (driveState.online) setSyncStatus('error', 'Sync failed');
+        }
+    }
+
+    // ─── Merge remote data into local state ───────────────────
+    function mergeRemoteData(remote) {
+        if (!remote || !remote.expenses) return;
+        let changed = false;
+
+        remote.expenses.forEach(incoming => {
+            const idx = state.expenses.findIndex(x => x.id === incoming.id);
+            if (idx === -1) {
+                state.expenses.push(incoming);
+                changed = true;
+            } else {
+                const ex = state.expenses[idx];
+                const diff =
+                    ex.amount   !== incoming.amount   ||
+                    ex.category !== incoming.category ||
+                    ex.notes    !== incoming.notes    ||
+                    ex.date     !== incoming.date     ||
+                    ex.memberId !== incoming.memberId;
+                // Use updatedAt to determine which version wins
+                const incomingNewer = incoming.updatedAt && ex.updatedAt
+                    ? incoming.updatedAt > ex.updatedAt
+                    : !!incoming.updatedAt;
+                if (diff && incomingNewer) {
+                    state.expenses[idx] = { ...ex, ...incoming };
+                    changed = true;
+                }
+            }
+        });
+
+        // Handle remote deletions — if an id is missing from remote but exists locally
+        // (only applies if remote has more than 0 expenses — safety check)
+        if (remote.expenses.length > 0) {
+            const remoteIds = new Set(remote.expenses.map(e => e.id));
+            const localDeletedByRemote = state.expenses.filter(e => !remoteIds.has(e.id));
+            // Only remove if the remote file was clearly written after local (has a syncedAt)
+            if (remote.syncedAt) {
+                localDeletedByRemote.forEach(e => {
+                    // Only delete if local expense was created before the remote sync
+                    if (e.createdAt < remote.syncedAt) {
+                        state.expenses = state.expenses.filter(x => x.id !== e.id);
+                        changed = true;
+                    }
+                });
+            }
+        }
+
+        // Merge categories
+        if (remote.categories) {
+            remote.categories.forEach(c => {
+                if (!state.categories.includes(c)) { state.categories.push(c); changed = true; }
+            });
+        }
+
+        // Merge member names (remote wins for names, not colors — preserves local color prefs)
+        if (remote.members) {
+            remote.members.forEach(rm => {
+                const lm = state.members.find(m => m.id === rm.id);
+                if (lm && lm.name !== rm.name) { lm.name = rm.name; changed = true; }
+            });
+        }
+    }
+
+    // ─── Push local state to Drive ────────────────────────────
+    async function drivePushData() {
+        if (driveState.skipSync || !driveState.accessToken) return;
+        if (!driveState.online) {
+            setSyncStatus('offline');
+            return;
+        }
+        setSyncStatus('syncing');
+        try {
+            await driveWriteFile({
+                version:    1,
+                syncedAt:   new Date().toISOString(),
+                syncedBy:   driveState.userEmail,
+                members:    state.members,
+                categories: state.categories,
+                expenses:   state.expenses,
+            });
+            setSyncStatus('synced');
+        } catch(err) {
+            console.error('Drive push error:', err);
+            setSyncStatus('error', 'Save failed');
+        }
+    }
+
+    // ─── syncNow: load then push (used after any data change) ─
+    async function syncNow() {
+        await driveLoadData();
+        await drivePushData();
+    }
+
+    // ─── Override persist() to also push to Drive ─────────────
+    function persist() {
+        _persistLocal();   // save to localStorage instantly
+        if (!driveState.skipSync && driveState.accessToken) {
+            drivePushData(); // push to Drive asynchronously
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // INIT
     // ═══════════════════════════════════════════════════════════
     hydrate();
     renderApp();
+    // Show sign-in screen or auto-resume session
+    window.addEventListener('load', () => {
+        // Small delay to let GIS script load
+        setTimeout(initSignInScreen, 500);
+    });
 </script>
 </body>
 </html>
