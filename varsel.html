@@ -1640,40 +1640,27 @@
 
     // ─── Sign-in screen logic ─────────────────────────────────
     function initSignInScreen() {
-        // If already authed in this session (token in sessionStorage), skip screen
-        const saved = sessionStorage.getItem('varsel_token');
-        if (saved) {
-            driveState.accessToken = saved;
-            const email = sessionStorage.getItem('varsel_email') || '';
-            const name  = sessionStorage.getItem('varsel_name')  || '';
-            onSignedIn(driveState.accessToken, email, name);
-            return;
-        }
-        // If user previously chose local-only, skip screen
-        if (localStorage.getItem('varsel_skip_sync') === '1') {
-            skipSignIn();
-            return;
-        }
-        // Show sign-in screen
-        document.getElementById('signin-screen').style.display = 'flex';
-    }
-
-    function startGoogleSignIn() {
-        // Use Google Identity Services token flow
+        // Always initialise the token client immediately so silent refresh works anytime
         driveState.tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: GDRIVE.CLIENT_ID,
             scope: GDRIVE.SCOPES,
             callback: (response) => {
-                if (response.error) { alert('Sign-in failed: ' + response.error); return; }
+                if (response.error) {
+                    // Silent refresh failed — only show sign-in screen if not already signed in
+                    if (!driveState.accessToken) {
+                        document.getElementById('signin-screen').style.display = 'flex';
+                    }
+                    return;
+                }
                 driveState.accessToken = response.access_token;
                 sessionStorage.setItem('varsel_token', response.access_token);
-                // If this was a silent refresh, just continue without showing sign-in screen
                 if (driveState.silentRefresh) {
+                    // Token was refreshed silently — just resume syncing
                     driveState.silentRefresh = false;
                     syncNow();
                     return;
                 }
-                // Fetch user info
+                // Fresh sign-in — fetch user info
                 fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                     headers: { Authorization: 'Bearer ' + response.access_token }
                 }).then(r => r.json()).then(info => {
@@ -1685,12 +1672,26 @@
                 }).catch(() => onSignedIn(response.access_token, '', ''));
             },
         });
-        driveState.tokenClient.requestAccessToken();
+
+        // If user previously chose local-only, skip screen
+        if (localStorage.getItem('varsel_skip_sync') === '1') {
+            skipSignIn();
+            return;
+        }
+        // Attempt silent token refresh first (works if user already granted access before)
+        driveState.silentRefresh = true;
+        driveState.tokenClient.requestAccessToken({ prompt: '' });
+    }
+
+    function startGoogleSignIn() {
+        // Token client already initialised in initSignInScreen — just request a token
+        if (!driveState.tokenClient) { alert('Sign-in not ready yet, please wait a moment.'); return; }
+        driveState.silentRefresh = false;
+        driveState.tokenClient.requestAccessToken({ prompt: 'select_account' });
     }
 
     function silentTokenRefresh() {
-        // Silently refresh the token without showing the sign-in popup
-        if (!driveState.tokenClient) { startGoogleSignIn(); return; }
+        if (!driveState.tokenClient) return;
         driveState.silentRefresh = true;
         driveState.tokenClient.requestAccessToken({ prompt: '' });
     }
