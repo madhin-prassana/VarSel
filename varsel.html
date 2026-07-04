@@ -1618,7 +1618,7 @@
         CLIENT_ID:   '981670144857-ahgvgas7tfmc3q8tqm99e5vagu65amt9.apps.googleusercontent.com',
         FOLDER_ID:   '1e0GjnUaTVv9ZRAQeiS-BquYOK_GQJnsq',
         FILE_ID:     '1xerAnVpJvSaRnB0beXDlMF9H9eCtiz4K',  // hardcoded — single source of truth, never changes
-        SCOPES:      'https://www.googleapis.com/auth/drive.file',
+        SCOPES:      'https://www.googleapis.com/auth/drive',
         FILENAME:    'varsel-data.json',
         POLL_MS:     30000,  // poll every 30 seconds
     };
@@ -1660,13 +1660,19 @@
 
     function startGoogleSignIn() {
         // Use Google Identity Services token flow
-        const client = google.accounts.oauth2.initTokenClient({
+        driveState.tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: GDRIVE.CLIENT_ID,
             scope: GDRIVE.SCOPES,
             callback: (response) => {
                 if (response.error) { alert('Sign-in failed: ' + response.error); return; }
                 driveState.accessToken = response.access_token;
                 sessionStorage.setItem('varsel_token', response.access_token);
+                // If this was a silent refresh, just continue without showing sign-in screen
+                if (driveState.silentRefresh) {
+                    driveState.silentRefresh = false;
+                    syncNow();
+                    return;
+                }
                 // Fetch user info
                 fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                     headers: { Authorization: 'Bearer ' + response.access_token }
@@ -1679,7 +1685,14 @@
                 }).catch(() => onSignedIn(response.access_token, '', ''));
             },
         });
-        client.requestAccessToken();
+        driveState.tokenClient.requestAccessToken();
+    }
+
+    function silentTokenRefresh() {
+        // Silently refresh the token without showing the sign-in popup
+        if (!driveState.tokenClient) { startGoogleSignIn(); return; }
+        driveState.silentRefresh = true;
+        driveState.tokenClient.requestAccessToken({ prompt: '' });
     }
 
     function onSignedIn(token, email, name) {
@@ -1768,12 +1781,12 @@
             },
         });
         if (res.status === 401) {
-            // Token expired — show sign-in again
+            // Token expired — attempt silent refresh first
             driveState.accessToken = null;
             sessionStorage.removeItem('varsel_token');
-            setSyncStatus('error', 'Session expired');
-            document.getElementById('signin-screen').style.display = 'flex';
-            throw new Error('Token expired');
+            setSyncStatus('syncing', 'Refreshing…');
+            silentTokenRefresh();
+            throw new Error('Token expired — refreshing');
         }
         return res;
     }
