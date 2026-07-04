@@ -1778,17 +1778,20 @@
     }
 
     async function driveFindFile() {
+        // Search shared folder regardless of file owner, sorted by most recently modified
         const q = encodeURIComponent(`name='${GDRIVE.FILENAME}' and '${GDRIVE.FOLDER_ID}' in parents and trashed=false`);
         const res = await driveRequest(
-            `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&spaces=drive`
+            `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&spaces=drive&orderBy=modifiedTime+desc&includeItemsFromAllDrives=true&supportsAllDrives=true`
         );
         const data = await res.json();
-        return data.files && data.files.length > 0 ? data.files[0] : null;
+        if (!data.files || data.files.length === 0) return null;
+        // Always use the most recently modified file (first result due to orderBy)
+        return data.files[0];
     }
 
     async function driveReadFile(fileId) {
         const res = await driveRequest(
-            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
+            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`
         );
         return await res.json();
     }
@@ -1797,19 +1800,19 @@
         const blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' });
 
         if (driveState.fileId) {
-            // Update existing file
+            // Update existing file — supportsAllDrives needed for shared files
             await driveRequest(
-                `https://www.googleapis.com/upload/drive/v3/files/${driveState.fileId}?uploadType=media`,
+                `https://www.googleapis.com/upload/drive/v3/files/${driveState.fileId}?uploadType=media&supportsAllDrives=true`,
                 { method: 'PATCH', body: blob, headers: { 'Content-Type': 'application/json' } }
             );
         } else {
-            // Create new file in folder
+            // Create new file in folder — only happens if no file exists at all
             const meta = { name: GDRIVE.FILENAME, parents: [GDRIVE.FOLDER_ID] };
             const form = new FormData();
             form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
             form.append('file', blob);
             const res = await driveRequest(
-                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id&supportsAllDrives=true',
                 { method: 'POST', body: form }
             );
             const data = await res.json();
